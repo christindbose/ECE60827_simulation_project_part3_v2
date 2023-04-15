@@ -11,7 +11,6 @@
 #include <time.h>
 #include <vector>
 
-#include "../ISA_Def/ampere_opcode.h"
 #include "../ISA_Def/kepler_opcode.h"
 #include "../ISA_Def/pascal_opcode.h"
 #include "../ISA_Def/trace_opcode.h"
@@ -70,10 +69,7 @@ trace_kernel_info_t::trace_kernel_info_t(dim3 gridDim, dim3 blockDim,
   m_kernel_trace_info = kernel_trace_info;
 
   // resolve the binary version
-  if (kernel_trace_info->binary_verion == AMPERE_RTX_BINART_VERSION ||
-      kernel_trace_info->binary_verion == AMPERE_A100_BINART_VERSION)
-    OpcodeMap = &Ampere_OpcodeMap;
-  else if (kernel_trace_info->binary_verion == VOLTA_BINART_VERSION)
+  if (kernel_trace_info->binary_verion == VOLTA_BINART_VERSION)
     OpcodeMap = &Volta_OpcodeMap;
   else if (kernel_trace_info->binary_verion == PASCAL_TITANX_BINART_VERSION ||
            kernel_trace_info->binary_verion == PASCAL_P100_BINART_VERSION)
@@ -90,16 +86,10 @@ trace_kernel_info_t::trace_kernel_info_t(dim3 gridDim, dim3 blockDim,
   }
 }
 
-bool trace_kernel_info_t::get_next_threadblock_traces(
+void trace_kernel_info_t::get_next_threadblock_traces(
     std::vector<std::vector<inst_trace_t> *> threadblock_traces) {
-  for (unsigned i = 0; i < threadblock_traces.size(); ++i) {
-    threadblock_traces[i]->clear();
-  }
-
-  bool success = m_parser->get_next_threadblock_traces(
+  m_parser->get_next_threadblock_traces(
       threadblock_traces, m_kernel_trace_info->trace_verion);
-
-  return success;
 }
 
 bool trace_warp_inst_t::parse_from_trace_struct(
@@ -217,7 +207,6 @@ bool trace_warp_inst_t::parse_from_trace_struct(
   case OP_LDS:
   case OP_STS:
   case OP_ATOMS:
-  case OP_LDSM:
     assert(data_size > 0);
     space.set_type(shared_space);
     break;
@@ -245,14 +234,10 @@ bool trace_warp_inst_t::parse_from_trace_struct(
           else if (trace.memadd_info->addrs[i] >=
                        kernel_trace_info->local_base_addr &&
                    trace.memadd_info->addrs[i] <
-                       kernel_trace_info->local_base_addr +
-                           LOCAL_MEM_SIZE_MAX) {
+                       kernel_trace_info->local_base_addr + LOCAL_MEM_SIZE_MAX)
             space.set_type(local_space);
-            cache_op = CACHE_ALL;
-          } else {
+          else
             space.set_type(global_space);
-            cache_op = CACHE_ALL;
-          }
           break;
         }
     }
